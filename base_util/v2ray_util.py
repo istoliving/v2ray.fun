@@ -3,25 +3,10 @@
 import write_json
 import random
 import socket
-import urllib.request
+import os
+import re
 from base_util import get_ssl
-
-#判断是否为数字的函数
-def is_number(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        pass
- 
-    try:
-        import unicodedata
-        unicodedata.numeric(s)
-        return True
-    except (TypeError, ValueError):
-        pass
- 
-    return False
+from base_util import tool_box
 
 def choice_stream(new_stream_network, index_dict):
     if(new_stream_network==1):
@@ -55,14 +40,10 @@ def random_kcp(index_dict={'inboundOrDetour': 0, 'detourIndex': 0, 'clientIndex'
     print()
     choice_stream(choice, index_dict)
 
-def get_ip():
-    my_ip = urllib.request.urlopen('http://api.ipify.org').read()
-    return bytes.decode(my_ip)
-
 def change_tls(yn, index_dict):
     if yn == "on":
         print("\n请将您的域名解析到本VPS的IP地址，否则程序会出错！！\n")
-        local_ip = get_ip()
+        local_ip = tool_box.get_ip()
         print("本机器IP地址为：" + local_ip + "\n")
         input_domain=str(input("请输入您绑定的域名："))
         try:
@@ -82,3 +63,29 @@ def change_tls(yn, index_dict):
         write_json.write_tls("off","", index_dict)
         
     print("\n操作完成！\n")
+
+def get_stats(type, meta_info, door_port, is_reset = False):
+    is_reset = "true" if is_reset else "false"
+
+    stats_cmd = "cd /usr/bin/v2ray && ./v2ctl api --server=127.0.0.1:%s StatsService.GetStats 'name: \"%s>>>%s>>>traffic>>>%s\" reset: %s'"
+    type_tag = ("user" if type == 0 else "inbound")
+
+    stats_real_cmd = stats_cmd % (str(door_port), type_tag, meta_info, "downlink", is_reset)
+    downlink_result = os.popen(stats_real_cmd).readlines()
+    if downlink_result and len(downlink_result) == 5:
+        re_result = re.findall(r"\d+", downlink_result[2])
+        if not re_result:
+            print("当前无流量数据，请使用流量片刻再来查看统计!")
+            return
+        downlink_value = int(re_result[0])
+        print("\033[36m")
+        print("\ndownlink: " + tool_box.bytes_2_human_readable(downlink_value, 2) + "\n")
+
+    stats_real_cmd = stats_cmd % (str(door_port), type_tag, meta_info, "uplink", is_reset)
+    uplink_result = os.popen(stats_real_cmd).readlines()
+    if uplink_result and len(uplink_result) == 5:
+        re_result = re.findall(r"\d+", uplink_result[2])
+        uplink_value = int(re_result[0])
+        print("uplink: " + tool_box.bytes_2_human_readable(uplink_value, 2) + "\n")
+        print("total: " + tool_box.bytes_2_human_readable(downlink_value + uplink_value, 2) + "\n")
+        print("\033[0m")

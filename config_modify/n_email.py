@@ -2,26 +2,28 @@
 # -*- coding: utf-8 -*-
 import read_json
 import write_json
-import re
 from base_util import tool_box
 
 mul_user_conf = read_json.multiUserConf
 
 length = len(mul_user_conf)
 
-choice = 'A'
+choice = 1
 
 if length > 1:
     import server_info
-    choice=input("请输入要改port的节点Group字母:")
-    choice=choice.upper()
+    choice=input("请输入要改email的节点序号数字:")
+    if not tool_box.is_number(choice):
+        print("输入错误，请检查是否为数字")
+        exit
+    choice = int(choice)
 
-if length == 1 or (len(choice)==1 and re.match(r'[A-Z]', choice) and choice <= mul_user_conf[-1]['indexDict']['group']):
+if length == 1 or (choice > 0 and choice <= len(mul_user_conf)):
+    print ("当前节点email为：%s" % mul_user_conf[choice - 1]['email'])
     email = ""
     while True:
         is_duplicate_email=False
-
-        email = input("是否输入email来新建用户, 回车直接跳过")
+        email = input("请输入新的email地址")
         if email == "":
             break
         if not tool_box.is_email(email):
@@ -35,9 +37,10 @@ if length == 1 or (len(choice)==1 and re.match(r'[A-Z]', choice) and choice <= m
                 print("已经有重复的email, 请重新输入")
                 is_duplicate_email = True
                 break
-        
         if not is_duplicate_email:
             break
-    write_json.create_new_user(choice, email)
+    if email != "":
+        write_json.write_email(email, mul_user_conf[choice - 1]['indexDict'])
+        print("修改email成功!")
 else:
-    print("输入有误，请检查是否为字母且范围中")
+    print ("输入错误，请检查是否符合范围中")
